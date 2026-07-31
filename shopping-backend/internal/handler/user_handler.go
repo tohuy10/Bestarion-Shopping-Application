@@ -62,7 +62,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		// 🟢 Trả về chi tiết các trường bị lỗi validate
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Dữ liệu đầu vào không hợp lệ",
+			"message": "Invalid JSON payload",
 			"details": formatValidationError(err),
 		})
 		return
@@ -72,10 +72,10 @@ func (h *UserHandler) Register(c *gin.Context) {
 	if err != nil {
 		// 🟢 Phân loại lỗi nghiệp vụ cụ thể
 		if errors.Is(err, domain.ErrEmailAlreadyExists) {
-			c.JSON(http.StatusConflict, gin.H{"error": "Email này đã được đăng ký"})
+			c.JSON(http.StatusConflict, gin.H{"error": "Email already exists"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi hệ thống, vui lòng thử lại sau"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "System error, please try again later"})
 		return
 	}
 
@@ -86,7 +86,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	var req domain.LoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Dữ liệu đầu vào không hợp lệ",
+			"message": "Invalid JSON payload",
 			"details": formatValidationError(err),
 		})
 		return
@@ -96,10 +96,10 @@ func (h *UserHandler) Login(c *gin.Context) {
 	if err != nil {
 		// 🟢 Bắt lỗi đăng nhập sai (User không tồn tại hoặc Mật khẩu sai)
 		if errors.Is(err, domain.ErrInvalidCredentials) || errors.Is(err, domain.ErrUserNotFound) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Email hoặc mật khẩu không chính xác"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi hệ thống, vui lòng thử lại sau"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "System error, please try again later"})
 		return
 	}
 
@@ -111,7 +111,7 @@ func (h *UserHandler) ForgotPassword(c *gin.Context) {
 	var req domain.ForgotPasswordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Email không hợp lệ",
+			"message": "Invalid email format",
 			"details": formatValidationError(err),
 		})
 		return
@@ -120,15 +120,15 @@ func (h *UserHandler) ForgotPassword(c *gin.Context) {
 	resetToken, err := h.service.ForgotPassword(c.Request.Context(), req)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Email không tồn tại trong hệ thống"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Email not found in the system"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi hệ thống, vui lòng thử lại sau"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "System error, please try again later"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":     "Yêu cầu thành công. Vui lòng kiểm tra email/token.",
+		"message":     "Request successful. Please check your email/token.",
 		"reset_token": resetToken,
 	})
 }
@@ -138,7 +138,7 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 	var req domain.ResetPasswordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Dữ liệu không hợp lệ",
+			"message": "Invalid JSON payload",
 			"details": formatValidationError(err),
 		})
 		return
@@ -147,21 +147,21 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 	err := h.service.ResetPassword(c.Request.Context(), req)
 	if err != nil {
 		if errors.Is(err, domain.ErrInvalidToken) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Token không hợp lệ hoặc đã hết hạn"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired reset token"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lỗi hệ thống, vui lòng thử lại sau"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "System error, please try again later"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Đặt lại mật khẩu thành công"})
+	c.JSON(http.StatusOK, gin.H{"message": "Password reset successful"})
 }
 
 // 🟢 MỚI: Handler lấy toàn bộ danh sách User cho Admin
 func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	users, err := h.service.GetAllUsers(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể lấy danh sách người dùng"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user list"})
 		return
 	}
 	c.JSON(http.StatusOK, users)
@@ -172,14 +172,14 @@ func (h *UserHandler) UpdateRole(c *gin.Context) {
 	idParam := c.Param("id")
 	userID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID người dùng không hợp lệ"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
 	var req domain.UpdateRoleReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Dữ liệu không hợp lệ",
+			"message": "Invalid data",
 			"details": formatValidationError(err),
 		})
 		return
@@ -187,30 +187,30 @@ func (h *UserHandler) UpdateRole(c *gin.Context) {
 
 	if err := h.service.UpdateUserRole(c.Request.Context(), userID, req.Role); err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Không tìm thấy người dùng"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cập nhật phân quyền thất bại"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update role"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Cập nhật phân quyền thành công"})
+	c.JSON(http.StatusOK, gin.H{"message": "Update role successful"})
 }
 
 func (h *UserHandler) GetMe(c *gin.Context) {
 	userID := getCurrentUserID(c)
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Tài khoản không hợp lệ hoặc chưa đăng nhập"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid account or not logged in"})
 		return
 	}
 
 	user, err := h.service.GetProfile(c.Request.Context(), userID)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Không tìm thấy người dùng"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể lấy thông tin người dùng"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user information"})
 		return
 	}
 
@@ -220,14 +220,14 @@ func (h *UserHandler) GetMe(c *gin.Context) {
 func (h *UserHandler) UpdateMe(c *gin.Context) {
 	userID := getCurrentUserID(c)
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Tài khoản không hợp lệ hoặc chưa đăng nhập"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid account or not logged in"})
 		return
 	}
 
 	var req domain.UpdateProfileReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Dữ liệu không hợp lệ",
+			"message": "Invalid data",
 			"details": formatValidationError(err),
 		})
 		return
@@ -235,33 +235,33 @@ func (h *UserHandler) UpdateMe(c *gin.Context) {
 
 	if err := h.service.UpdateProfile(c.Request.Context(), userID, req); err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Không tìm thấy người dùng"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cập nhật thông tin thất bại"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile"})
 		return
 	}
 
 	updatedUser, err := h.service.GetProfile(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"message": "Cập nhật thông tin thành công"})
+		c.JSON(http.StatusOK, gin.H{"message": "Update profile successful"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Cập nhật thông tin thành công", "user": updatedUser})
+	c.JSON(http.StatusOK, gin.H{"message": "Update profile successful", "user": updatedUser})
 }
 
 func (h *UserHandler) ChangePassword(c *gin.Context) {
 	userID := getCurrentUserID(c)
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Tài khoản không hợp lệ hoặc chưa đăng nhập"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid account or not logged in"})
 		return
 	}
 
 	var req domain.ChangePasswordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Dữ liệu không hợp lệ",
+			"message": "Invalid data",
 			"details": formatValidationError(err),
 		})
 		return
@@ -269,16 +269,16 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 
 	if err := h.service.ChangePassword(c.Request.Context(), userID, req); err != nil {
 		if errors.Is(err, domain.ErrInvalidCurrentPassword) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Mật khẩu hiện tại không chính xác"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Current password is incorrect"})
 			return
 		}
 		if errors.Is(err, domain.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Không tìm thấy người dùng"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Đổi mật khẩu thất bại"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to change password"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Đổi mật khẩu thành công"})
+	c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
 }

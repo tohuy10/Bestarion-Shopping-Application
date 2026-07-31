@@ -8,11 +8,11 @@ import (
 
 // 🟢 MỚI: Khai báo các biến lỗi chuẩn cho toàn hệ thống
 var (
-	ErrEmailAlreadyExists = errors.New("email đã tồn tại trên hệ thống")
-	ErrUserNotFound       = errors.New("không tìm thấy người dùng")
-	ErrInvalidCredentials = errors.New("email hoặc mật khẩu không chính xác")
-	ErrInvalidToken       = errors.New("mã khôi phục không hợp lệ hoặc đã hết hạn")
-	ErrInvalidCurrentPassword = errors.New("mật khẩu hiện tại không chính xác")
+	ErrEmailAlreadyExists = errors.New("Email already exists")
+	ErrUserNotFound       = errors.New("User not found")
+	ErrInvalidCredentials = errors.New("Invalid email or password")
+	ErrInvalidToken       = errors.New("Invalid or expired reset token")
+	ErrInvalidCurrentPassword = errors.New("Current password is incorrect")
 )
 
 // User định nghĩa cấu trúc dữ liệu người dùng trong CSDL

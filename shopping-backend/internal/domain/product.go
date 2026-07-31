@@ -10,6 +10,7 @@ type Product struct {
 	Name      string    `json:"name"`
 	Price     float64   `json:"price"`
 	Stock     int       `json:"stock"`
+	ImageURL  string    `json:"image_url"`
 	CreatedAt time.Time `json:"created_at"`
 }
 // ProductQuery chứa các tham số query từ client

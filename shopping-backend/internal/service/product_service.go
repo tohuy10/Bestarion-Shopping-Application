@@ -88,6 +88,7 @@ func (s *productService) UpdateProduct(ctx context.Context, id int64, p *domain.
 	existing.Name = p.Name
 	existing.Price = p.Price
 	existing.Stock = p.Stock
+	existing.ImageURL = p.ImageURL
 
 	// 4. Lưu xuống CSDL
 	if err := s.repo.Update(ctx, existing); err != nil {

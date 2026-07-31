@@ -50,3 +50,13 @@ func (s *ShoppingService) GetAllOrders(ctx context.Context) ([]domain.Order, err
 func (s *ShoppingService) GetOrderByID(ctx context.Context, orderID int64) (*domain.Order, error) {
 	return s.repo.GetOrderByID(ctx, orderID)
 }
+
+// Lấy danh sách đơn hàng của riêng User
+func (s *ShoppingService) GetUserOrders(ctx context.Context, userID int64) ([]domain.Order, error) {
+	return s.repo.GetUserOrders(ctx, userID)
+}
+
+// Lấy chi tiết đơn hàng của riêng User theo ID
+func (s *ShoppingService) GetUserOrderByID(ctx context.Context, orderID int64, userID int64) (*domain.Order, error) {
+	return s.repo.GetUserOrderByID(ctx, orderID, userID)
+}

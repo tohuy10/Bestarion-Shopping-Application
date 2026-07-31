@@ -25,6 +25,7 @@ func (r *ShoppingRepository) GetCartItems(ctx context.Context, userID int64) ([]
 		FROM cart_items ci
 		JOIN products p ON ci.product_id = p.id
 		WHERE ci.user_id = $1
+		ORDER BY ci.id ASC
 	`
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
@@ -265,4 +266,87 @@ func (r *ShoppingRepository) GetOrderByID(ctx context.Context, orderID int64) (*
 
     order.Items = items
     return &order, nil
+}
+
+// ------------------- USER ORDER METHODS -------------------
+
+// Lấy danh sách đơn hàng của 1 user cụ thể
+func (r *ShoppingRepository) GetUserOrders(ctx context.Context, userID int64) ([]domain.Order, error) {
+	query := `
+		SELECT id, user_id, total_amount, status, created_at
+		FROM orders
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+	`
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	orders := []domain.Order{}
+	for rows.Next() {
+		var o domain.Order
+		if err := rows.Scan(&o.ID, &o.UserID, &o.TotalAmount, &o.Status, &o.CreatedAt); err != nil {
+			return nil, err
+		}
+		orders = append(orders, o)
+	}
+	return orders, nil
+}
+
+// Lấy chi tiết 1 đơn hàng thuộc về 1 user cụ thể
+func (r *ShoppingRepository) GetUserOrderByID(ctx context.Context, orderID int64, userID int64) (*domain.Order, error) {
+	orderQuery := `
+		SELECT id, user_id, total_amount, status, created_at
+		FROM orders
+		WHERE id = $1 AND user_id = $2
+	`
+	var order domain.Order
+	err := r.db.QueryRowContext(ctx, orderQuery, orderID, userID).Scan(
+		&order.ID, &order.UserID, &order.TotalAmount, &order.Status, &order.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("không tìm thấy đơn hàng hoặc bạn không có quyền xem đơn hàng này")
+		}
+		return nil, err
+	}
+
+	itemsQuery := `
+		SELECT 
+			oi.id, 
+			oi.order_id, 
+			oi.product_id, 
+			COALESCE(p.name, 'Sản phẩm không tồn tại') AS product_name, 
+			oi.quantity, 
+			oi.price
+		FROM order_items oi
+		LEFT JOIN products p ON oi.product_id = p.id
+		WHERE oi.order_id = $1
+	`
+	rows, err := r.db.QueryContext(ctx, itemsQuery, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []domain.OrderItem
+	for rows.Next() {
+		var item domain.OrderItem
+		if err := rows.Scan(
+			&item.ID, 
+			&item.OrderID, 
+			&item.ProductID, 
+			&item.ProductName, 
+			&item.Quantity, 
+			&item.Price,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+
+	order.Items = items
+	return &order, nil
 }

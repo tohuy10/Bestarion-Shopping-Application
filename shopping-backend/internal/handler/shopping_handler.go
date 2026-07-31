@@ -165,3 +165,43 @@ func (h *ShoppingHandler) GetOrderByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, order)
 }
+
+// User: Lấy danh sách các đơn hàng của chính mình
+func (h *ShoppingHandler) GetMyOrders(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Tài khoản không hợp lệ hoặc chưa đăng nhập"})
+		return
+	}
+
+	orders, err := h.service.GetUserOrders(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, orders)
+}
+
+// User: Xem chi tiết 1 đơn hàng của chính mình
+func (h *ShoppingHandler) GetMyOrderByID(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Tài khoản không hợp lệ hoặc chưa đăng nhập"})
+		return
+	}
+
+	idParam := c.Param("id")
+	orderID, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID đơn hàng không hợp lệ"})
+		return
+	}
+
+	order, err := h.service.GetUserOrderByID(c.Request.Context(), orderID, userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, order)
+}

@@ -14,8 +14,18 @@ type productRepository struct {
 }
 
 func NewProductRepository(db *sql.DB) domain.ProductRepository {
+	query := `
+	CREATE TABLE IF NOT EXISTS products (
+		id BIGSERIAL PRIMARY KEY,
+		name VARCHAR(255) NOT NULL,
+		category VARCHAR(100) DEFAULT '',
+		price NUMERIC(12, 2) NOT NULL DEFAULT 0,
+		stock INT NOT NULL DEFAULT 0,
+		image_url TEXT DEFAULT '',
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+	);`
+	_, _ = db.Exec(query)
 	_, _ = db.Exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';")
-	// 🟢 1. Tự động thêm cột category vào DB nếu chưa có
 	_, _ = db.Exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT '';")
 	return &productRepository{db: db}
 }

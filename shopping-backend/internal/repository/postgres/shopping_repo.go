@@ -13,6 +13,33 @@ type ShoppingRepository struct {
 }
 
 func NewShoppingRepository(db *sql.DB) *ShoppingRepository {
+	cartQuery := `
+	CREATE TABLE IF NOT EXISTS cart_items (
+		id BIGSERIAL PRIMARY KEY,
+		user_id BIGINT NOT NULL,
+		product_id BIGINT NOT NULL,
+		quantity INT NOT NULL DEFAULT 1,
+		UNIQUE(user_id, product_id)
+	);`
+	ordersQuery := `
+	CREATE TABLE IF NOT EXISTS orders (
+		id BIGSERIAL PRIMARY KEY,
+		user_id BIGINT NOT NULL,
+		total_amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
+		status VARCHAR(50) NOT NULL DEFAULT 'PAID',
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+	);`
+	orderItemsQuery := `
+	CREATE TABLE IF NOT EXISTS order_items (
+		id BIGSERIAL PRIMARY KEY,
+		order_id BIGINT NOT NULL,
+		product_id BIGINT NOT NULL,
+		quantity INT NOT NULL,
+		price NUMERIC(12, 2) NOT NULL
+	);`
+	_, _ = db.Exec(cartQuery)
+	_, _ = db.Exec(ordersQuery)
+	_, _ = db.Exec(orderItemsQuery)
 	return &ShoppingRepository{db: db}
 }
 

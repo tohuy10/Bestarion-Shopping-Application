@@ -13,7 +13,7 @@ pipeline {
                 echo '🧪 Running Go Unit Tests...'
                 sh '''
                     cd shopping-backend
-                    go test -v ./... || echo "Tests completed"
+                    go test -v ./tests/...
                 '''
             }
         }

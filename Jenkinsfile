@@ -16,9 +16,10 @@ pipeline {
 
         stage('2. Run Backend Unit Tests') {
             steps {
-                echo '🧪 Running Go Unit Tests in Docker...'
+                echo '🧪 Running Go Unit Tests...'
                 sh '''
-                    docker run --rm -v "$PWD/shopping-backend":/app -w /app golang:alpine go test -v ./... || echo "Tests completed"
+                    cd shopping-backend
+                    go test -v ./... || echo "Tests completed"
                 '''
             }
         }

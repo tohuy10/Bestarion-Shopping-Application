@@ -4,17 +4,11 @@ pipeline {
     environment {
         DOCKER_IMAGE_BACKEND = 'shopping-backend:latest'
         DOCKER_IMAGE_FRONTEND = 'shopping-frontend:latest'
+        GOPATH = '/var/jenkins_home/go'
     }
 
     stages {
-        stage('1. Checkout Code') {
-            steps {
-                echo '📥 Pulling code from Git repository...'
-                checkout scm
-            }
-        }
-
-        stage('2. Run Backend Unit Tests') {
+        stage('1. Run Backend Unit Tests') {
             steps {
                 echo '🧪 Running Go Unit Tests...'
                 sh '''
@@ -24,7 +18,7 @@ pipeline {
             }
         }
 
-        stage('3. Build Docker Images') {
+        stage('2. Build Docker Images') {
             steps {
                 echo '🐋 Building Docker Images...'
                 sh '''

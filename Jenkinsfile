@@ -20,7 +20,7 @@ pipeline {
 
         stage('2. Build Docker Images') {
             steps {
-                echo '🐋 Building Docker Images...'
+                echo '🐋 Building Application Docker Images...'
                 sh '''
                     docker compose build
                 '''

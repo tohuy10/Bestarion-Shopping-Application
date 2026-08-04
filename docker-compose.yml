@@ -48,20 +48,5 @@ services:
     depends_on:
       - backend
 
-  # 4. Jenkins CI/CD Automation Server
-  jenkins:
-    build:
-      context: .
-      dockerfile: jenkins/Dockerfile
-    container_name: jenkins_local
-    ports:
-      - "9090:8080"
-      - "50000:50000"
-    volumes:
-      - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-    user: root
-
 volumes:
   postgres_data:
-  jenkins_home:

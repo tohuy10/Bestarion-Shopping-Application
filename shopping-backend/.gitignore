@@ -1,0 +1,8 @@
+# Environment variables
+.env
+
+# Binary
+/api
+*.exe
+*.exe.log
+*.out

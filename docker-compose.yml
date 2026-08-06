@@ -33,6 +33,8 @@ services:
       DB_PASSWORD: your_postgres_password
       DB_NAME: go_react_post
       DB_SSLMODE: disable
+    volumes:
+      - ./shopping-backend/uploads:/app/uploads
     depends_on:
       postgres_db:
         condition: service_healthy

@@ -18,6 +18,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// getEnvOrDefault reads an environment variable or returns a fallback default value
 func getEnvOrDefault(key, fallback string) string {
 	if val := os.Getenv(key); val != "" {
 		return val
@@ -26,6 +27,9 @@ func getEnvOrDefault(key, fallback string) string {
 }
 
 func main() {
+	// ==========================================
+	// 1. ENVIRONMENT CONFIGURATION & DB CONNECT
+	// ==========================================
 	// 🟢 Load .env file (tries current directory, parent directory)
 	envLoaded := false
 	for _, envFile := range []string{".env", "../.env", "../../.env"} {
@@ -40,7 +44,7 @@ func main() {
 		log.Println("⚠️  WARNING: No .env file loaded! Please copy '.env.example' to '.env' and set your database credentials.")
 	}
 
-	// 1. Kết nối Database từ Environment Variables
+	// Read database configuration from Environment Variables
 	dbHost := getEnvOrDefault("DB_HOST", "localhost")
 	dbPort := getEnvOrDefault("DB_PORT", "5432")
 	dbUser := getEnvOrDefault("DB_USER", "postgres")
@@ -55,6 +59,7 @@ func main() {
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		dbUser, dbPassword, dbHost, dbPort, dbName, dbSSLMode)
 
+	// Open connection to PostgreSQL pool
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatalf("Cannot connect to DB: %v", err)
@@ -66,29 +71,38 @@ func main() {
 	}
 	log.Println("Connected to PostgreSQL successfully!")
 
-	// 2. Khai báo Dependency Injection - Product Module
+	// ==========================================
+	// 2. DEPENDENCY INJECTION SETUP
+	// Repository -> Service -> Handler Wiring
+	// ==========================================
+
+	// Product Module Wiring
 	productRepo := postgres.NewProductRepository(db)
 	productService := service.NewProductService(productRepo)
 	productHandler := handler.NewProductHandler(productService)
 
-	// Khai báo Dependency Injection - User Module
+	// User Module Wiring
 	userRepo := postgres.NewUserRepository(db)
 	userService := service.NewUserService(userRepo)
 	userHandler := handler.NewUserHandler(userService)
 
-	// Khai báo Dependency Injection - Shopping Module
+	// Shopping Module Wiring (Cart & Orders)
 	shoppingRepo := postgres.NewShoppingRepository(db)
 	shoppingService := service.NewShoppingService(shoppingRepo)
 	shoppingHandler := handler.NewShoppingHandler(shoppingService)
-	// Khai báo Upload Handler
+
+	// Upload Handler Wiring
 	uploadHandler := handler.NewUploadHandler()
 
-	// 3. Khai báo Route & Cấu hình CORS Middleware
-	r := gin.Default()
+	// ==========================================
+	// 3. GIN ROUTER & MIDDLEWARE CONFIGURATION
+	// ==========================================
+	r := gin.Default() // Initializes router with default Logger and Recovery middlewares
 
-	// 🟢 Phục vụ static file cho các ảnh đã được tải lên server tại thư mục ./uploads
+	// Serve static files for uploaded product images at ./uploads
 	r.Static("/uploads", "./uploads")
 
+	// Configure Cross-Origin Resource Sharing (CORS) for React frontend (:5173 / :3000)
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -98,23 +112,24 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// 4. Các đường dẫn API
+	// ==========================================
+	// 4. API ROUTE DEFINITIONS & GROUPING
+	// ==========================================
 	v1 := r.Group("/api/v1")
 	{
-		// Upload route
+		// File upload endpoint
 		v1.POST("/upload", uploadHandler.UploadFile)
-		// Auth Routes (Đăng ký / Đăng nhập)
+
+		// Public Authentication Routes (Register, Login, Password Reset)
 		auth := v1.Group("/auth")
 		{
 			auth.POST("/register", userHandler.Register)
 			auth.POST("/login", userHandler.Login)
-
-			// 🟢 MỚI: Thêm 2 route cho tính năng Quên & Đặt lại mật khẩu
 			auth.POST("/forgot-password", userHandler.ForgotPassword)
 			auth.POST("/reset-password", userHandler.ResetPassword)
 		}
 
-		// Product Routes
+		// Product Catalog Routes
 		products := v1.Group("/products")
 		{
 			products.POST("", productHandler.Create)
@@ -124,41 +139,45 @@ func main() {
 			products.DELETE("/:id", productHandler.Delete)
 		}
 
-		// 🟢 MỚI: Route lấy danh sách Categories cho Frontend
+		// Fetch Category Filter List
 		v1.GET("/categories", productHandler.GetCategories)
 
-		// 🟢 MỚI: Admin Management Routes (Fix lỗi 404 /api/v1/admin/users)
+		// Admin Management Routes (Protected by AuthMiddleware)
 		admin := v1.Group("/admin")
-		admin.Use(middleware.AuthMiddleware()) // Yêu cầu JWT Token
+		admin.Use(middleware.AuthMiddleware()) // Requires valid JWT Bearer Token
 		{
 			admin.GET("/users", userHandler.GetAllUsers)
 			admin.PATCH("/users/:id/role", userHandler.UpdateRole)
 
-			// 🟢 MỚI: Quản lý Đơn hàng cho Admin
-			admin.GET("/orders", shoppingHandler.GetAllOrders)     // Lấy danh sách đơn hàng
-			admin.GET("/orders/:id", shoppingHandler.GetOrderByID) // Xem chi tiết đơn hàng
+			// Admin Order Management
+			admin.GET("/orders", shoppingHandler.GetAllOrders)     // List all system orders
+			admin.GET("/orders/:id", shoppingHandler.GetOrderByID) // View specific order detail
 		}
 
-		// 🟢 2. Các Route bắt buộc phải ĐĂNG NHẬP (Cần Bearer Token)
+		// Authenticated User Routes (Protected by AuthMiddleware)
 		protected := v1.Group("")
-		protected.Use(middleware.AuthMiddleware()) // Bắt buộc client gửi Token hợp lệ
+		protected.Use(middleware.AuthMiddleware()) // Requires valid JWT Bearer Token
 		{
 			protected.GET("/me", userHandler.GetMe)
 			protected.PATCH("/me", userHandler.UpdateMe)
 			protected.PATCH("/me/password", userHandler.ChangePassword)
+
+			// Shopping Cart Routes
 			protected.GET("/cart", shoppingHandler.GetCart)
 			protected.POST("/cart/items", shoppingHandler.AddToCart)
 			protected.DELETE("/cart/items/:product_id", shoppingHandler.RemoveFromCart)
 			protected.PATCH("/cart/items/:product_id", shoppingHandler.UpdateCartItem)
 			protected.POST("/checkout", shoppingHandler.Checkout)
 
-			// 🟢 MỚI: Xem danh sách và chi tiết đơn hàng cá nhân của User
+			// Personal Order History
 			protected.GET("/my/orders", shoppingHandler.GetMyOrders)
 			protected.GET("/my/orders/:id", shoppingHandler.GetMyOrderByID)
 		}
 	}
 
-	// 5. Run Server
+	// ==========================================
+	// 5. START HTTP SERVER
+	// ==========================================
 	log.Println("Server running on port :8080")
 	r.Run(":8080")
 }

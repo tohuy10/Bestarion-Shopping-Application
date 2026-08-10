@@ -18,4 +18,4 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Expose HTTP port
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/bin/sh", "-c", "echo '--------------------------------------------------' && echo '🚀 Bestarion Shopping Frontend is running!' && echo '👉 Access application at: http://localhost:5173' && echo '--------------------------------------------------' && exec nginx -g 'daemon off;'"]

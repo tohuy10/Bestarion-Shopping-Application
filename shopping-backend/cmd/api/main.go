@@ -178,6 +178,9 @@ func main() {
 	// ==========================================
 	// 5. START HTTP SERVER
 	// ==========================================
-	log.Println("Server running on port :8080")
+	log.Println("--------------------------------------------------")
+	log.Println("🚀 Bestarion Shopping Backend API is running!")
+	log.Println("👉 API Endpoint: http://localhost:8080/api/v1")
+	log.Println("--------------------------------------------------")
 	r.Run(":8080")
 }

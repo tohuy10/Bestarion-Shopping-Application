@@ -1,0 +1,54 @@
+services:
+  # 1. Database Service
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: shopping_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_postgres_password
+      POSTGRES_DB: go_react_post
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d go_react_post" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Go Backend API Service
+  backend:
+    build:
+      context: ./shopping-backend
+      dockerfile: Dockerfile
+    container_name: shopping_backend
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres_db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: your_postgres_password
+      DB_NAME: go_react_post
+      DB_SSLMODE: disable
+    volumes:
+      - ./shopping-backend/uploads:/app/uploads
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+  # 3. React Frontend Service
+  frontend:
+    build:
+      context: ./shopping-frontend
+      dockerfile: Dockerfile
+    container_name: shopping_frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

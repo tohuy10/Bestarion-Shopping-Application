@@ -2,22 +2,90 @@
 
 A modern, full-stack E-commerce Web Application built with **Go** (Golang + Gin + PostgreSQL) for the REST API backend and **React** (Vite + Tailwind CSS + Lucide Icons) for the frontend user interface.
 
+Includes complete **Docker containerization** and a local **Jenkins CI/CD Pipeline**.
+
 ---
 
 ## 📁 Repository Structure
 
 ```text
 Bestarion_Shopping_App/
-├── shopping-backend/   # Go REST API backend server (Port 8080)
-├── shopping-frontend/  # React Vite frontend application (Port 5173)
-└── README.md           # Project documentation & setup instructions
+├── docker-compose.yml       # Orchestrates Postgres DB, Go Backend, and React Frontend
+├── Jenkinsfile              # Declarative CI/CD Pipeline (Checkout -> Unit Tests -> Docker Build)
+├── setup-jenkins.sh         # One-command standalone Jenkins CI/CD setup script
+├── jenkins/
+│   └── Dockerfile           # Custom Jenkins image pre-baked with Docker CLI, Compose & Go
+├── shopping-backend/        # Go REST API backend server (Port 8080)
+│   ├── cmd/api/main.go
+│   ├── internal/            # Onion architecture (domain, service, repository, handler)
+│   └── tests/unit/          # Dedicated unit test directory (domain & password tests)
+├── shopping-frontend/       # React Vite frontend application (Port 5173 / 80)
+└── README.md                # Project documentation & setup instructions
 ```
 
 ---
 
-## 🛠️ Prerequisites
+## 🐋 Quick Start with Docker (Recommended)
 
-Before running the application from scratch, ensure you have the following installed on your machine:
+Run the entire application (PostgreSQL + Go Backend API + React Frontend) with a single command without needing Go, Node.js, or PostgreSQL installed locally!
+
+### 1️⃣ Launch Containers
+
+```bash
+docker compose up -d --build
+```
+
+### 2️⃣ Access Services
+
+* 🌐 **React Frontend**: [http://localhost:5173](http://localhost:5173)
+* ⚙️ **Go Backend API**: [http://localhost:8080](http://localhost:8080)
+* 🗄️ **PostgreSQL Database**: Exposed on host port `5433` (`go_react_post`)
+
+---
+
+## 🤖 Standalone Jenkins CI/CD Setup
+
+To run automated integration builds, unit testing, and image creation via Jenkins:
+
+### 1️⃣ Run Jenkins Setup Script
+
+```bash
+./setup-jenkins.sh
+```
+
+This builds a custom Jenkins container (`jenkins/Dockerfile`) with **Docker CLI**, **Docker Compose**, and **Go compiler** pre-installed, and mounts `/var/run/docker.sock`.
+
+### 2️⃣ Access Jenkins & Get Admin Password
+
+* 🌐 **Jenkins Dashboard**: [http://localhost:9090](http://localhost:9090)
+* 🔑 **Retrieve Initial Admin Password**:
+  ```bash
+  docker exec jenkins_local cat /var/jenkins_home/secrets/initialAdminPassword
+  ```
+
+### 3️⃣ Jenkins Pipeline Stages (`Jenkinsfile`)
+
+1. **Stage 1 (Run Backend Unit Tests)**: Runs Go unit tests inside `shopping-backend/tests/unit/`.
+2. **Stage 2 (Build Docker Images)**: Builds production Docker images for `shopping-backend` and `shopping-frontend`.
+
+---
+
+## 🧪 Running Unit Tests
+
+Unit tests are inside the `shopping-backend/tests/unit/` directory.
+
+### Run Tests Locally:
+
+```bash
+cd shopping-backend
+go test -v ./tests/...
+```
+
+---
+
+## 🛠️ Prerequisites (For Manual Setup Without Docker)
+
+Before running the application from scratch without Docker, ensure you have the following installed:
 
 - [Go (Golang)](https://go.dev/dl/) v1.20 or later
 - [Node.js](https://nodejs.org/) v18 or later (with `npm`)
@@ -25,9 +93,9 @@ Before running the application from scratch, ensure you have the following insta
 
 ---
 
-## 🚀 Setup & Installation Guide (From Scratch)
+## 🚀 Manual Setup & Installation Guide (From Scratch)
 
-Follow these steps to set up and launch both the backend and frontend services.
+Follow these steps to set up and launch both the backend and frontend services manually.
 
 ### 1️⃣ Database Configuration (PostgreSQL)
 
@@ -108,7 +176,7 @@ CREATE DATABASE go_react_post;
 
 - 🛡️ **Admin Portal**:
   - **Product Management**: Add/Edit/Delete items, category assignment, direct image URL or local file upload preview.
-  - **User Management**: View user list, filter by roles, assign/update roles (`Admin` or `Customer`) with built-in safety protection preventing demoting the last remaining admin.
+  - **User Management**: View user list, filter by roles, assign/update roles (`Admin` or `Customer`).
   - **Order Management**: Oversee all user transactions with detailed order view and printable receipts.
 
 ---
@@ -117,3 +185,4 @@ CREATE DATABASE go_react_post;
 
 - **Backend**: Go (Golang), Gin Framework, PostgreSQL (`lib/pq`), JWT Authentication, bcrypt, `godotenv`.
 - **Frontend**: React (Vite), Tailwind CSS, Lucide React Icons, React Toastify.
+- **CI/CD & DevOps**: Docker, Docker Compose, Jenkins Pipeline, Git Webhooks.

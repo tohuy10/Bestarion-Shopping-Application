@@ -11,14 +11,17 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// UserHandler handles HTTP endpoints for User Authentication, Profiles, and Admin Role Management.
 type UserHandler struct {
 	service service.UserService
 }
 
+// NewUserHandler constructs a new UserHandler instance via Dependency Injection.
 func NewUserHandler(s service.UserService) *UserHandler {
 	return &UserHandler{service: s}
 }
 
+// getCurrentUserID extracts user_id set in Gin Context by AuthMiddleware
 func getCurrentUserID(c *gin.Context) int64 {
 	if val, exists := c.Get("user_id"); exists {
 		switch v := val.(type) {
@@ -33,7 +36,7 @@ func getCurrentUserID(c *gin.Context) int64 {
 	return 0
 }
 
-// Hàm bổ trợ: Format lỗi Validate từ ShouldBindJSON thành Map chi tiết
+// formatValidationError converts Go struct validation errors into user-friendly JSON field messages
 func formatValidationError(err error) map[string]string {
 	errs := make(map[string]string)
 	var ve validator.ValidationErrors
@@ -57,10 +60,10 @@ func formatValidationError(err error) map[string]string {
 	return map[string]string{"error": "Invalid JSON payload structure"}
 }
 
+// Register handles POST /api/v1/auth/register (Registers new user account)
 func (h *UserHandler) Register(c *gin.Context) {
 	var req domain.RegisterReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		// 🟢 Trả về chi tiết các trường bị lỗi validate
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid JSON payload",
 			"details": formatValidationError(err),
@@ -70,7 +73,6 @@ func (h *UserHandler) Register(c *gin.Context) {
 
 	res, err := h.service.Register(c.Request.Context(), req)
 	if err != nil {
-		// 🟢 Phân loại lỗi nghiệp vụ cụ thể
 		if errors.Is(err, domain.ErrEmailAlreadyExists) {
 			c.JSON(http.StatusConflict, gin.H{"error": "Email already exists"})
 			return
@@ -82,6 +84,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, res)
 }
 
+// Login handles POST /api/v1/auth/login (Authenticates credentials & returns JWT token)
 func (h *UserHandler) Login(c *gin.Context) {
 	var req domain.LoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -94,7 +97,6 @@ func (h *UserHandler) Login(c *gin.Context) {
 
 	res, err := h.service.Login(c.Request.Context(), req)
 	if err != nil {
-		// 🟢 Bắt lỗi đăng nhập sai (User không tồn tại hoặc Mật khẩu sai)
 		if errors.Is(err, domain.ErrInvalidCredentials) || errors.Is(err, domain.ErrUserNotFound) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 			return
@@ -106,7 +108,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-// 🟢 Handler Quên Mật Khẩu
+// ForgotPassword handles POST /api/v1/auth/forgot-password (Generates password reset token)
 func (h *UserHandler) ForgotPassword(c *gin.Context) {
 	var req domain.ForgotPasswordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -133,7 +135,7 @@ func (h *UserHandler) ForgotPassword(c *gin.Context) {
 	})
 }
 
-// 🟢 Handler Đặt Lại Mật Khẩu
+// ResetPassword handles POST /api/v1/auth/reset-password (Resets user password with valid token)
 func (h *UserHandler) ResetPassword(c *gin.Context) {
 	var req domain.ResetPasswordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -157,7 +159,7 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Password reset successful"})
 }
 
-// 🟢 MỚI: Handler lấy toàn bộ danh sách User cho Admin
+// GetAllUsers handles GET /api/v1/admin/users (Admin: Fetch list of all system users)
 func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	users, err := h.service.GetAllUsers(c.Request.Context())
 	if err != nil {
@@ -167,7 +169,7 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
-// 🟢 MỚI: Handler cập nhật Role cho User
+// UpdateRole handles PATCH /api/v1/admin/users/:id/role (Admin: Promotes/demotes user role)
 func (h *UserHandler) UpdateRole(c *gin.Context) {
 	idParam := c.Param("id")
 	userID, err := strconv.ParseInt(idParam, 10, 64)
@@ -201,6 +203,7 @@ func (h *UserHandler) UpdateRole(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Update role successful"})
 }
 
+// GetMe handles GET /api/v1/me (User: Fetches profile info of currently logged-in user)
 func (h *UserHandler) GetMe(c *gin.Context) {
 	userID := getCurrentUserID(c)
 	if userID == 0 {
@@ -221,6 +224,7 @@ func (h *UserHandler) GetMe(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+// UpdateMe handles PATCH /api/v1/me (User: Updates profile info)
 func (h *UserHandler) UpdateMe(c *gin.Context) {
 	userID := getCurrentUserID(c)
 	if userID == 0 {
@@ -255,6 +259,7 @@ func (h *UserHandler) UpdateMe(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Update profile successful", "user": updatedUser})
 }
 
+// ChangePassword handles PATCH /api/v1/me/password (User: Changes account password)
 func (h *UserHandler) ChangePassword(c *gin.Context) {
 	userID := getCurrentUserID(c)
 	if userID == 0 {

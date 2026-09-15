@@ -9,28 +9,32 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ShoppingHandler handles HTTP endpoints for Shopping Cart and Order Operations.
 type ShoppingHandler struct {
 	service *service.ShoppingService
 }
 
+// NewShoppingHandler constructs a new ShoppingHandler instance via Dependency Injection.
 func NewShoppingHandler(s *service.ShoppingService) *ShoppingHandler {
 	return &ShoppingHandler{service: s}
 }
 
+// getUserID extracts and type-casts the user_id stored in Gin Context by AuthMiddleware
 func getUserID(c *gin.Context) int64 {
 	if val, exists := c.Get("user_id"); exists {
 		switch v := val.(type) {
 		case float64:
-			return int64(v) // JWT claims mặc định parse ra float64
+			return int64(v) // JWT claims default number format is float64
 		case int64:
 			return v
 		case int:
 			return int64(v)
 		}
 	}
-	return 0 // Trả về 0 thay vì hardcode id = 1
+	return 0
 }
 
+// GetCart handles GET /api/v1/cart (Fetches all items in current user's shopping cart)
 func (h *ShoppingHandler) GetCart(c *gin.Context) {
 	items, err := h.service.GetCart(c.Request.Context(), getUserID(c))
 	if err != nil {
@@ -40,6 +44,7 @@ func (h *ShoppingHandler) GetCart(c *gin.Context) {
 	c.JSON(http.StatusOK, items)
 }
 
+// AddToCart handles POST /api/v1/cart/items (Adds or increments product quantity in user's cart)
 func (h *ShoppingHandler) AddToCart(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == 0 {
@@ -62,6 +67,7 @@ func (h *ShoppingHandler) AddToCart(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Added to cart successfully"})
 }
 
+// RemoveFromCart handles DELETE /api/v1/cart/items/:product_id (Deletes a product item from user's cart)
 func (h *ShoppingHandler) RemoveFromCart(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == 0 {
@@ -89,7 +95,7 @@ func (h *ShoppingHandler) RemoveFromCart(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Product removed from cart successfully"})
 }
 
-// Cập nhật số lượng sản phẩm trong giỏ hàng (body: { "quantity": <int> })
+// UpdateCartItem handles PATCH /api/v1/cart/items/:product_id (Updates item quantity in cart)
 func (h *ShoppingHandler) UpdateCartItem(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == 0 {
@@ -125,6 +131,7 @@ func (h *ShoppingHandler) UpdateCartItem(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Cart item quantity updated successfully"})
 }
 
+// Checkout handles POST /api/v1/checkout (Executes SQL transaction: creates order, deducts stock, clears cart)
 func (h *ShoppingHandler) Checkout(c *gin.Context) {
 	order, err := h.service.Checkout(c.Request.Context(), getUserID(c))
 	if err != nil {
@@ -138,7 +145,7 @@ func (h *ShoppingHandler) Checkout(c *gin.Context) {
 	})
 }
 
-// Admin: Lấy danh sách tất cả các đơn hàng
+// Admin: Lấy danh sách tất cả các đơn hàng (GET /api/v1/admin/orders)
 func (h *ShoppingHandler) GetAllOrders(c *gin.Context) {
 	orders, err := h.service.GetAllOrders(c.Request.Context())
 	if err != nil {
@@ -148,7 +155,7 @@ func (h *ShoppingHandler) GetAllOrders(c *gin.Context) {
 	c.JSON(http.StatusOK, orders)
 }
 
-// Admin: Xem chi tiết 1 đơn hàng
+// Admin: Xem chi tiết 1 đơn hàng (GET /api/v1/admin/orders/:id)
 func (h *ShoppingHandler) GetOrderByID(c *gin.Context) {
 	idParam := c.Param("id")
 	orderID, err := strconv.ParseInt(idParam, 10, 64)
@@ -166,7 +173,7 @@ func (h *ShoppingHandler) GetOrderByID(c *gin.Context) {
 	c.JSON(http.StatusOK, order)
 }
 
-// User: Lấy danh sách các đơn hàng của chính mình
+// User: Lấy danh sách các đơn hàng của chính mình (GET /api/v1/my/orders)
 func (h *ShoppingHandler) GetMyOrders(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == 0 {
@@ -182,7 +189,7 @@ func (h *ShoppingHandler) GetMyOrders(c *gin.Context) {
 	c.JSON(http.StatusOK, orders)
 }
 
-// User: Xem chi tiết 1 đơn hàng của chính mình
+// User: Xem chi tiết 1 đơn hàng của chính mình (GET /api/v1/my/orders/:id)
 func (h *ShoppingHandler) GetMyOrderByID(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == 0 {

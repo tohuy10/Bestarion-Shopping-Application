@@ -11,14 +11,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// UploadHandler manages multipart file upload requests.
 type UploadHandler struct{}
 
+// NewUploadHandler creates a new UploadHandler instance.
 func NewUploadHandler() *UploadHandler {
 	return &UploadHandler{}
 }
 
+// UploadFile handles POST /api/v1/upload (Uploads product image files to server disk)
 func (h *UploadHandler) UploadFile(c *gin.Context) {
-	// 1. Lấy file từ Form Data ("image" hoặc "file")
+	// 1. Read uploaded file from multipart form data ("image" or "file" form key)
 	file, err := c.FormFile("image")
 	if err != nil {
 		file, err = c.FormFile("file")
@@ -28,7 +31,7 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 		}
 	}
 
-	// 2. Validate định dạng file (chỉ cho phép định dạng ảnh)
+	// 2. Validate image file extension (prevents uploading non-image/malicious files)
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	allowedExtensions := map[string]bool{
 		".jpg":  true,
@@ -43,25 +46,25 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 		return
 	}
 
-	// 3. TẠO THƯ MỤC UPLOADS NẾU CHƯA TỒN TẠI
+	// 3. Ensure uploads directory exists on server disk
 	uploadDir := "./uploads"
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot create upload directory"})
 		return
 	}
 
-	// 4. Tạo tên file độc nhất tránh trùng lặp
+	// 4. Generate unique timestamped filename to prevent overwriting existing files
 	cleanFileName := strings.ReplaceAll(filepath.Base(file.Filename), " ", "_")
 	newFileName := fmt.Sprintf("%d_%s", time.Now().UnixNano(), cleanFileName)
 	dst := filepath.Join(uploadDir, newFileName)
 
-	// 5. Lưu file vào server
+	// 5. Save uploaded file binary onto server disk at destination path
 	if err := c.SaveUploadedFile(file, dst); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error saving file: %v", err)})
 		return
 	}
 
-	// 6. Trả về đường dẫn HTTP static của file vừa tải lên
+	// 6. Return accessible static HTTP URL for frontend rendering
 	fileURL := fmt.Sprintf("http://localhost:8080/uploads/%s", newFileName)
 	c.JSON(http.StatusOK, gin.H{
 		"url":      fileURL,
